@@ -1,0 +1,143 @@
+openapi: 3.1.0
+info:
+  title: CodebaseIQ API
+  description: Enterprise API for AI-Powered Repository Intelligence
+  version: 1.0.0
+servers:
+  - url: https://api.codebaseiq.com/v1
+    description: Production API Gateway
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+    
+    Repository:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        github_id:
+          type: integer
+        name:
+          type: string
+        full_name:
+          type: string
+        sync_status:
+          type: string
+          enum: [UNSYNCED, QUEUED, CLONING, PARSING, EMBEDDING, ACTIVE, FAILED]
+        last_synced_at:
+          type: string
+          format: date-time
+
+    ChatRequest:
+      type: object
+      required:
+        - query
+        - repository_ids
+      properties:
+        query:
+          type: string
+          description: Natural language query.
+        repository_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/github/callback:
+    get:
+      summary: GitHub OAuth Callback
+      security: []
+      parameters:
+        - in: query
+          name: code
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully authenticated. Returns JWT.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+
+  /repositories:
+    get:
+      summary: List Repositories
+      description: Returns a paginated list of repositories accessible to the Organization.
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: A list of repositories.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Repository'
+  
+  /repositories/{id}/sync:
+    post:
+      summary: Initiate Repository Sync
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Sync job queued successfully.
+
+  /chat/stream:
+    post:
+      summary: AI Chat Stream (RAG)
+      description: Accepts a query and streams the LLM response via Server-Sent Events (SSE).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: SSE text stream containing markdown chunks.
+          content:
+            text/event-stream:
+              schema:
+                type: string
