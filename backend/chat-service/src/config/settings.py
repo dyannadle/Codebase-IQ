@@ -4,6 +4,12 @@ class Settings(BaseSettings):
     QDRANT_URL: str
     QDRANT_API_KEY: str = ""
     
+    REDIS_URL: str
+    
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 720
+    
     NEO4J_URI: str
     NEO4J_USER: str
     NEO4J_PASSWORD: str

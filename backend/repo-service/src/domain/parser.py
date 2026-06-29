@@ -6,7 +6,7 @@ from typing import List, Dict, Any
 class PythonASTParser:
     def __init__(self):
         # Initialize the Python language from the tree-sitter-python package
-        self.PY_LANGUAGE = Language(tspython.language())
+        self.PY_LANGUAGE = Language(tspython.language(), "python")
         self.parser = Parser(self.PY_LANGUAGE)
 
     def parse_file(self, filepath: str) -> List[Dict[str, Any]]:

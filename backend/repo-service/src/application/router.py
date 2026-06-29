@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from src.infrastructure.database import get_db
 from src.domain.models import Repository, SyncJob, SyncStatus
 from src.application.worker import process_repository_sync
+from src.domain.security import get_current_user, TokenData
 import uuid
 from pydantic import BaseModel
 
@@ -14,20 +15,18 @@ class RepositoryCreate(BaseModel):
 router = APIRouter(prefix="/repositories", tags=["Repositories"])
 
 @router.post("")
-def create_repository(repo_data: RepositoryCreate, db: Session = Depends(get_db)):
+def create_repository(repo_data: RepositoryCreate, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
     """Registers a new repository and triggers the initial sync."""
     # Check if exists
     existing = db.query(Repository).filter(Repository.github_repo_id == repo_data.github_repo_id).first()
     if existing:
         raise HTTPException(status_code=400, detail="Repository already registered")
         
-    # In a real app, organization_id comes from the JWT of the logged in user.
-    # For now, we'll generate a dummy one or hardcode it since auth isn't fully passed yet.
-    # We will use a dummy UUID.
-    dummy_org_id = uuid.uuid4()
+    # Use real user_id from token instead of dummy org ID
+    user_id_uuid = uuid.UUID(current_user.user_id)
 
     new_repo = Repository(
-        organization_id=dummy_org_id,
+        organization_id=user_id_uuid,
         github_repo_id=repo_data.github_repo_id,
         full_name=repo_data.full_name,
         clone_url=repo_data.clone_url,
@@ -48,10 +47,30 @@ def create_repository(repo_data: RepositoryCreate, db: Session = Depends(get_db)
     
     return {"message": "Repository registered and sync queued", "repository_id": str(new_repo.id), "job_id": str(job.id)}
 
+@router.get("")
+def get_repositories(db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
+    """Gets all repositories for the current user."""
+    user_id_uuid = uuid.UUID(current_user.user_id)
+    repos = db.query(Repository).filter(Repository.organization_id == user_id_uuid).all()
+    
+    return [
+        {
+            "id": str(repo.id),
+            "github_repo_id": repo.github_repo_id,
+            "full_name": repo.full_name,
+            "clone_url": repo.clone_url,
+            "sync_status": repo.sync_status.value,
+            "last_synced_at": repo.last_synced_at
+        } for repo in repos
+    ]
+
 @router.post("/{repository_id}/sync")
-def trigger_sync(repository_id: str, db: Session = Depends(get_db)):
+def trigger_sync(repository_id: str, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
     """Triggers an asynchronous repository sync job via Celery."""
-    repo = db.query(Repository).filter(Repository.id == repository_id).first()
+    repo = db.query(Repository).filter(
+        Repository.id == repository_id,
+        Repository.organization_id == uuid.UUID(current_user.user_id)
+    ).first()
     if not repo:
         raise HTTPException(status_code=404, detail="Repository not found")
         
@@ -71,9 +90,12 @@ def trigger_sync(repository_id: str, db: Session = Depends(get_db)):
     return {"message": "Sync queued", "job_id": str(job.id)}
 
 @router.get("/{repository_id}/status")
-def get_sync_status(repository_id: str, db: Session = Depends(get_db)):
+def get_sync_status(repository_id: str, db: Session = Depends(get_db), current_user: TokenData = Depends(get_current_user)):
     """Gets the current sync status of a repository."""
-    repo = db.query(Repository).filter(Repository.id == repository_id).first()
+    repo = db.query(Repository).filter(
+        Repository.id == repository_id,
+        Repository.organization_id == uuid.UUID(current_user.user_id)
+    ).first()
     if not repo:
         raise HTTPException(status_code=404, detail="Repository not found")
         

@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from src.config.celery_app import celery_app
 from src.application.router import router as repo_router
 from src.infrastructure.database import engine, Base
 

@@ -2,13 +2,14 @@ import os
 import tempfile
 import subprocess
 from celery import shared_task
+from src.config.celery_app import celery_app
 from sqlalchemy.orm import Session
 from src.infrastructure.database import SessionLocal
 from src.domain.models import Repository, SyncJob, SyncStatus
 from src.domain.parser import PythonASTParser
 from datetime import datetime, timezone
 
-@shared_task(bind=True, max_retries=3)
+@celery_app.task(bind=True, max_retries=3)
 def process_repository_sync(self, repository_id: str, job_id: str):
     """
     Main Celery task that orchestrates the ingestion pipeline:
