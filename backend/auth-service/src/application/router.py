@@ -22,10 +22,14 @@ async def github_login():
 @router.get("/callback")
 async def github_callback(
     response: Response,
-    code: str = Query(...),
+    code: str | None = Query(None),
+    error: str | None = Query(None),
     db: Session = Depends(get_db)
 ):
     """Handles GitHub callback, creates/updates user, and issues JWT."""
+    if error or not code:
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/?error=access_denied")
+
     try:
         # 1. Exchange code for access token
         access_token = await oauth_service.exchange_github_code_for_token(code)

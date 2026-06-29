@@ -87,8 +87,9 @@ export default function DashboardPage() {
         setRepoUrl("");
         setSuccessMsg("");
       }, 2000);
-    } catch (err: any) {
-      setErrorMsg(err.message);
+    } catch (err: unknown) {
+      const error = err as Error;
+      setErrorMsg(error.message);
     } finally {
       setIsLoading(false);
     }

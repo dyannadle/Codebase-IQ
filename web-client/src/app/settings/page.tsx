@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AppLayout from "@/components/AppLayout";
 
 export default function SettingsPage() {
@@ -10,15 +10,30 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Load from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setApiKey(localStorage.getItem("openai_api_key") || "");
+      setTheme(localStorage.getItem("theme") || "dark");
+      setFontSize(localStorage.getItem("font_size") || "14");
+    }
+  }, []);
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    // Simulate save
+    
+    if (typeof window !== "undefined") {
+      localStorage.setItem("openai_api_key", apiKey);
+      localStorage.setItem("theme", theme);
+      localStorage.setItem("font_size", fontSize);
+    }
+    
     setTimeout(() => {
       setIsSaving(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    }, 1000);
+    }, 800);
   };
 
   return (

@@ -42,7 +42,8 @@ class RAGEngine:
                 
                 # 3. Structural Search (Neo4j) - Find dependencies for the top matched file
                 # In a production system, this would be done for all top N files concurrently
-                deps = await neo4j_db.get_dependencies(file_path, repo_ids[0])
+                repo_id = repo_ids[0] if repo_ids else "default"
+                deps = await neo4j_db.get_dependencies(file_path, repo_id)
                 if deps["imports"] or deps["imported_by"]:
                     graph_context += f"File: {file_path}\n"
                     if deps["imports"]:

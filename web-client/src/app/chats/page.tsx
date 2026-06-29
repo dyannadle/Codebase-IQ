@@ -25,7 +25,7 @@ export default function ChatsPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch repositories for the dropdown
+  // Fetch repositories for the dropdown and poll every 5 seconds
   useEffect(() => {
     const fetchRepositories = async () => {
       try {
@@ -38,15 +38,20 @@ export default function ChatsPage() {
           // Only allow chatting with ACTIVE repositories
           const activeRepos = data.filter((r: Repository) => r.sync_status === "ACTIVE");
           setRepositories(activeRepos);
-          if (activeRepos.length > 0) {
-            setSelectedRepoId(activeRepos[0].id);
-          }
+          
+          setSelectedRepoId((prev) => {
+            if (activeRepos.length === 0) return "";
+            if (activeRepos.some((r: Repository) => r.id === prev)) return prev;
+            return activeRepos[0].id;
+          });
         }
       } catch (err) {
         console.error("Failed to fetch repositories:", err);
       }
     };
     fetchRepositories();
+    const intervalId = setInterval(fetchRepositories, 5000);
+    return () => clearInterval(intervalId);
   }, []);
 
   // Auto-scroll to bottom
@@ -84,16 +89,19 @@ export default function ChatsPage() {
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
+      let buffer = "";
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value, { stream: true });
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
           
-          // Simple SSE parsing (looking for 'data: ' lines)
-          const lines = chunk.split("\n");
+          // Keep the last segment (which may be incomplete) in the buffer
+          buffer = lines.pop() || "";
+
           for (const line of lines) {
             if (line.startsWith("data: ")) {
               const data = line.slice(6);

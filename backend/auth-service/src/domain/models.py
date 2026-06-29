@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, DateTime
+from sqlalchemy import Column, String, Integer, BigInteger, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from src.infrastructure.database import Base
 
@@ -8,7 +8,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    github_id = Column(Integer, unique=True, index=True, nullable=False)
+    github_id = Column(BigInteger, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
